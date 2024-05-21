@@ -1,5 +1,6 @@
 Scene #1
 Customer : Hey there , I have a question?
+Flow1
 Bot : Hello , May I know how you would like to be assisted? Please choose from the following options
 option 1 : Product Enquiry?
 option 2 : Delivery 
@@ -7,13 +8,14 @@ Option 2 : Return / replacement
 Option 3 : Others
 
 Customer : Option 1
-
+Flow2
 Bot : Sure , Please choose the categoy
 Category 1: Insulin 
 Category 2 : others
 
 Customer : Insulin
 
+Flow3
 Bot : You Area of Enquiry please?
 Option 1 : Different models / different products in insulin category
 Option 2 : How to use?
