@@ -59,7 +59,6 @@ public class WebhookController {
                     System.out.println("Message from: " + senderId);
                     System.out.println("Message type: " + messageType);
                     System.out.println("Message text: " + messageText);
-
                     // Here you can add your logic to handle the message, e.g., store it in a database,
                     // trigger a response, etc.
                 }
