@@ -1,0 +1,29 @@
+mediaAPI withImageHEader
+
+
+
+{
+  "messaging_product": "whatsapp",
+  "recipient_type": "individual",
+  "to": "177xxxxxxx",
+  "type": "template",
+  "template": {
+    "name": "dwpe",
+    "language": {
+      "code": "en"
+    },
+    "components": [
+      {
+        "type": "header",
+        "parameters": [
+          {
+            "type": "image",
+            "image": {
+              "link": "https://carevego.com/cdn/shop/files/2222.jpg?v=1712984960&width=400"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
