@@ -4,14 +4,18 @@ import Model.Change;
 import Model.Entry;
 import Model.Message;
 import Model.WebhookRequest;
+import Model.WhatsAppService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -21,6 +25,12 @@ public class WebhookController {
 
     // Replace this with your actual verify token
     private static final String VERIFY_TOKEN = "1234";
+    private final WhatsAppService whatsappService;
+
+    @Autowired
+    public WebhookController(WhatsAppService whatsappService) {
+        this.whatsappService = whatsappService;
+    }
 
     // Verification endpoint
     @GetMapping
@@ -44,25 +54,97 @@ public class WebhookController {
 
     // Endpoint to receive messages
     @PostMapping
-    public void receiveMessage(@RequestBody WebhookRequest webhookRequest) {
+    public void receiveMessage(@RequestBody WebhookRequest webhookRequest) throws IOException {
+        // Read the request body as a string
         System.out.println("Received message: " + webhookRequest);
+        if (webhookRequest.getErrors() != null && !webhookRequest.getErrors().isEmpty()) {
+            webhookRequest.getErrors().forEach(error -> System.err.println("Error: " + error));
+            return;
+        }
 
-        // Extract and process the message
+        //start
         for (Entry entry : webhookRequest.getEntry()) {
             for (Change change : entry.getChanges()) {
-                for (Message message : change.getValue().getMessages()) {
-                    String senderId = message.getFrom();
-                    String messageType = message.getType();
-                    String messageText = message.getText().getBody();
+                // Check if messages are null or empty
+                if (change.getValue().getMessages() != null) {
+                    for (Message message : change.getValue().getMessages()) {
+                        String senderId = message.getFrom();
+                        String messageType = message.getType();
 
-                    // Process the message
-                    System.out.println("Message from: " + senderId);
-                    System.out.println("Message type: " + messageType);
-                    System.out.println("Message text: " + messageText);
-                    // Here you can add your logic to handle the message, e.g., store it in a database,
-                    // trigger a response, etc.
+                        // Handle different message types
+                        if ("text".equals(messageType) && message.getText() != null) {
+                            String messageText = message.getText().getBody();
+                            processTextMessage(senderId, messageText);
+                        } else if ("button".equals(messageType) && message.getButton() != null) {
+                            String buttonPayload = message.getButton().getPayload();
+                            String buttonText = message.getButton().getText();
+                            processButtonMessage(senderId, buttonPayload, buttonText);
+                        } //to get shopify order status
+                        else if ("interactive".equals(messageType) && message.getInteractive().getType().equals("nfm_reply")) {
+                            String orderId = message.getInteractive().getNfmReply().getPropertyFromResponseJson("orderId").toString();
+                            if(null != orderId){
+                                System.out.println("***********orderID " +orderId);
+                            }
+                        } else {
+                            System.out.println("Unhandled message type: " + messageType);
+                        }
+                    }
+                } else {
+                    System.out.println("No messages found in the change.");
                 }
             }
         }
+        //end
     }
+    private void processTextMessage(String senderId, String messageText) {
+        System.out.println("Text message from: " + senderId);
+        System.out.println("Message text: " + messageText);
+        // Determine scenario and dynamic parameters
+        String scenario = determineScenario(messageText);  // Implement your own logic here
+        Map<String, Object> dynamicParams = new HashMap<>();
+        dynamicParams.put("name", "User");  // Example dynamic parameter
+        // Send template message based on the scenario
+        whatsappService.sendTemplateMessage(senderId, scenario, dynamicParams);
+    }
+
+    private void processButtonMessage(String senderId, String buttonPayload, String buttonText) {
+        System.out.println("Button message from: " + senderId);
+        System.out.println("Button payload: " + buttonPayload);
+        System.out.println("Button text: " + buttonText);
+
+        // Handle button message
+        // Example: Respond with a confirmation template
+        Map<String, Object> dynamicParams = new HashMap<>();
+        Map<String,String> urlLink = new HashMap<>();
+        dynamicParams.put("button_response", buttonText);
+        String scenario = determineScenario(buttonPayload);  // Implement your own logic here
+
+        //   dynamicParams.put("type", "image");
+      //  dynamicParams.put("image", urlLink.put("link","https://carevego.com/cdn/shop/files/2222.jpg?v=1712984960&width=400"));
+
+        if(scenario.contains("cta_url")){
+            whatsappService.sendInteractiveMessage(senderId, scenario, dynamicParams);
+        }else if (scenario.contains("checkdelivery")) {
+            whatsappService.sendFlowMessage(senderId, scenario, dynamicParams);
+        }else{
+            whatsappService.sendTemplateMessage(senderId, scenario, dynamicParams);
+        }
+    }
+
+    private String determineScenario(String messageText) {
+        if (messageText.contains("Hey there")) {
+            return "welcome";
+        } else if (messageText.contains("Product Enquiry")) {
+            return "choosecategory";
+        } else if (messageText.contains("Delivery")) {
+            return "checkdelivery";
+        }
+        else if (messageText.contains("Insulin cooler case")) {
+            return "cta_url";
+        }
+        else {
+            return "other";
+        }
+    }
+
 }
