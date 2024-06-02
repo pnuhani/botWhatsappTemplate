@@ -1,17 +1,7 @@
 package Model;
 
-import Model.Change;
-import Model.Entry;
-import Model.Message;
-import Model.WebhookRequest;
-import Model.WhatsAppService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -26,10 +16,13 @@ public class WebhookController {
     // Replace this with your actual verify token
     private static final String VERIFY_TOKEN = "1234";
     private final WhatsAppService whatsappService;
+    private final ShopifyOrderService shopifyOrderService;
 
     @Autowired
-    public WebhookController(WhatsAppService whatsappService) {
+    public WebhookController(WhatsAppService whatsappService , ShopifyOrderService shopifyOrderService) {
         this.whatsappService = whatsappService;
+        this.shopifyOrderService = shopifyOrderService;
+
     }
 
     // Verification endpoint
@@ -74,7 +67,7 @@ public class WebhookController {
                         // Handle different message types
                         if ("text".equals(messageType) && message.getText() != null) {
                             String messageText = message.getText().getBody();
-                            processTextMessage(senderId, messageText);
+                            processTemplateMessage(senderId, messageText);
                         } else if ("button".equals(messageType) && message.getButton() != null) {
                             String buttonPayload = message.getButton().getPayload();
                             String buttonText = message.getButton().getText();
@@ -82,8 +75,15 @@ public class WebhookController {
                         } //to get shopify order status
                         else if ("interactive".equals(messageType) && message.getInteractive().getType().equals("nfm_reply")) {
                             String orderId = message.getInteractive().getNfmReply().getPropertyFromResponseJson("orderId").toString();
+                            Optional<String> trackingUrl;
                             if(null != orderId){
-                                System.out.println("***********orderID " +orderId);
+                                 trackingUrl = shopifyOrderService.getTrackingUrl(orderId);
+                                trackingUrl.ifPresentOrElse(
+                                        url -> whatsappService.sendTextMessage(senderId, true , String.valueOf(trackingUrl)),
+                                        () -> whatsappService.sendTextMessage(senderId, false, "")
+                                );
+                            } else {
+                                trackingUrl = null;
                             }
                         } else {
                             System.out.println("Unhandled message type: " + messageType);
@@ -96,7 +96,7 @@ public class WebhookController {
         }
         //end
     }
-    private void processTextMessage(String senderId, String messageText) {
+    private void processTemplateMessage(String senderId, String messageText) {
         System.out.println("Text message from: " + senderId);
         System.out.println("Message text: " + messageText);
         // Determine scenario and dynamic parameters
@@ -118,9 +118,6 @@ public class WebhookController {
         Map<String,String> urlLink = new HashMap<>();
         dynamicParams.put("button_response", buttonText);
         String scenario = determineScenario(buttonPayload);  // Implement your own logic here
-
-        //   dynamicParams.put("type", "image");
-      //  dynamicParams.put("image", urlLink.put("link","https://carevego.com/cdn/shop/files/2222.jpg?v=1712984960&width=400"));
 
         if(scenario.contains("cta_url")){
             whatsappService.sendInteractiveMessage(senderId, scenario, dynamicParams);

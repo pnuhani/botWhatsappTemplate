@@ -14,6 +14,16 @@ public class WhatsAppConfig {
     private Api api = new Api();
     private Map<String, Template> templates = new HashMap<>();
 
+    public Text getText() {
+        return text;
+    }
+
+    public void setText(Text text) {
+        this.text = text;
+    }
+
+    private Text text = new Text();
+
     private String defaultLanguage;
 
     public static class Api {
@@ -335,6 +345,55 @@ public class WhatsAppConfig {
 
         public void setText(String text) {
             this.text = text;
+        }
+    }
+
+    public static class Text {
+        private String name;
+        private String type;
+        private boolean previewUrl;
+        private String bodyIfLinkThere;
+        private String bodyIfLinkNotThere;
+
+        // Getters and Setters
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public boolean isPreviewUrl() {
+            return previewUrl;
+        }
+
+        public void setPreviewUrl(boolean previewUrl) {
+            this.previewUrl = previewUrl;
+        }
+
+        public String getBodyIfLinkThere() {
+            return bodyIfLinkThere;
+        }
+
+        public void setBodyIfLinkThere(String bodyIfLinkThere) {
+            this.bodyIfLinkThere = bodyIfLinkThere;
+        }
+
+        public String getBodyIfLinkNotThere() {
+            return bodyIfLinkNotThere;
+        }
+
+        public void setBodyIfLinkNotThere(String bodyIfLinkNotThere) {
+            this.bodyIfLinkNotThere = bodyIfLinkNotThere;
         }
     }
     // Getters and Setters

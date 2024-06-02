@@ -1,10 +1,7 @@
 package Model;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -46,26 +43,6 @@ public class WhatsAppService {
             List<Map<String, Object>> components = buildComponents(templateConfig.getComponents());
             template.put("components", components);
         }
-
-     /*   List<Map<String, Object>> parameters = new ArrayList<>();
-        for (Map.Entry<String, String> entry : templateConfig.getParameters().entrySet()) {
-            Map<String, Object> parameter = new HashMap<>();
-            parameter.put("type", "text");
-            String value = entry.getValue();
-
-
-            // Replace placeholders with dynamic parameters
-            for (Map.Entry<String, Object> dynamicEntry : dynamicParams.entrySet()) {
-                value = value.replace("{" + dynamicEntry.getKey() + "}", dynamicEntry.getValue().toString());
-            }
-
-            parameter.put("text", value);
-            parameters.add(parameter);
-        }
-
-        component.put("parameters", parameters);
-        components.add(component);
-        template.put("components", components);*/
 
         body.put("template", template);
 
@@ -226,4 +203,37 @@ public class WhatsAppService {
 
         restTemplate.exchange(config.getApi().getUrl(), HttpMethod.POST, request, String.class);
     }
+
+    public void sendTextMessage(String to, boolean trackingLinkFound, String trackingUrl) {
+        String body;
+        if (trackingLinkFound) {
+            body = config.getText().getBodyIfLinkThere() + "\n"+trackingUrl;
+        } else {
+            body = config.getText().getBodyIfLinkNotThere();
+        }
+
+        Map<String, Object> message = new HashMap<>();
+        message.put("messaging_product", "whatsapp");
+        message.put("recipient_type", "individual");
+        message.put("to", to);
+        message.put("type", config.getText().getType());
+
+        Map<String, Object> text = new HashMap<>();
+        text.put("preview_url", config.getText().isPreviewUrl());
+        text.put("body", body);
+
+        message.put("text", text);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(config.getApi().getAccessToken());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(message, headers);
+        ResponseEntity<String> response = restTemplate.exchange(config.getApi().getUrl(), HttpMethod.POST, entity, String.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            System.err.println("Failed to send message: " + response.getBody());
+        }
+    }
+
 }
