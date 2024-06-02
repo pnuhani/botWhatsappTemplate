@@ -1,4 +1,4 @@
-package Model;
+package com.carevego.model;
 
 public class Context {
     private String from;

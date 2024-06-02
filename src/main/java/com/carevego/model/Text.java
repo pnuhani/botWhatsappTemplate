@@ -1,4 +1,4 @@
-package Model;
+package com.carevego.model;
 
 
 public class Text {

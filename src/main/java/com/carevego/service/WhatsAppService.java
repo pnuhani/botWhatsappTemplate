@@ -1,5 +1,7 @@
-package Model;
+package com.carevego.service;
 
+import com.carevego.config.WhatsAppConfig;
+import com.carevego.model.HttpEntityFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;

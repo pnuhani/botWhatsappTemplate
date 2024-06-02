@@ -1,4 +1,4 @@
-package Model;
+package com.carevego.model;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;

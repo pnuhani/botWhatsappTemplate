@@ -1,8 +1,15 @@
-package Model;
+package com.carevego.controller;
 
+
+import com.carevego.model.Change;
+import com.carevego.model.Entry;
+import com.carevego.model.Message;
+import com.carevego.model.WebhookRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.carevego.service.ShopifyOrderService;
+import com.carevego.service.WhatsAppService;
 
 import java.io.IOException;
 import java.util.HashMap;

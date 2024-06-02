@@ -1,4 +1,4 @@
-package Model;
+package com.carevego.model;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;

@@ -1,6 +1,4 @@
-package Model;
-
-import java.util.List;
+package com.carevego.model;
 
 public class Change {
     private Value value;
