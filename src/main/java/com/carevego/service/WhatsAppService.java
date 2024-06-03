@@ -2,6 +2,7 @@ package com.carevego.service;
 
 import com.carevego.config.WhatsAppConfig;
 import com.carevego.model.HttpEntityFormatter;
+import com.carevego.service.conversation.ConversationStateManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -14,14 +15,22 @@ public class WhatsAppService {
 
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
+    private final ConversationStateManager conversationStateManager;
+
 
     @Autowired
-    public WhatsAppService(WhatsAppConfig config, RestTemplate restTemplate) {
+    public WhatsAppService(WhatsAppConfig config, RestTemplate restTemplate,ConversationStateManager conversationStateManager) {
         this.config = config;
         this.restTemplate = restTemplate;
+        this.conversationStateManager = conversationStateManager;
+
     }
 
     public void sendTemplateMessage(String recipientPhoneNumber, String scenario, Map<String, Object> dynamicParams) {
+        if (conversationStateManager.getState(recipientPhoneNumber).isStopMessages()) {
+            System.out.println("Stopped messages for user: " + recipientPhoneNumber);
+            return;
+        }
         WhatsAppConfig.Template templateConfig = config.getTemplates().get(scenario);
 
         if (templateConfig == null) {
@@ -95,7 +104,10 @@ public class WhatsAppService {
     }
 
     public void sendInteractiveMessage(String recipientPhoneNumber, String scenario, Map<String, Object> dynamicParams) {
-        {
+            if (conversationStateManager.getState(recipientPhoneNumber).isStopMessages()) {
+                System.out.println("Stopped messages for user: " + recipientPhoneNumber);
+                return;
+             }
             WhatsAppConfig.Template templateConfig = config.getTemplates().get(scenario);
 
             if (templateConfig == null) {
@@ -145,10 +157,14 @@ public class WhatsAppService {
             System.out.println(HttpEntityFormatter.formatHttpEntity(request));
 
             restTemplate.exchange(config.getApi().getUrl(), HttpMethod.POST, request, String.class);
-        }
+
     }
 
     public void sendFlowMessage(String recipientPhoneNumber, String scenario, Map<String, Object> dynamicParams) {
+        if (conversationStateManager.getState(recipientPhoneNumber).isStopMessages()) {
+            System.out.println("Stopped messages for user: " + recipientPhoneNumber);
+            return;
+        }
         WhatsAppConfig.Template templateConfig = config.getTemplates().get(scenario);
 
         if (templateConfig == null) {
@@ -207,6 +223,10 @@ public class WhatsAppService {
     }
 
     public void sendTextMessage(String to, boolean trackingLinkFound, String trackingUrl) {
+        if (conversationStateManager.getState(to).isStopMessages()) {
+            System.out.println("Stopped messages for user: " + to);
+            return;
+        }
         String body;
         if (trackingLinkFound) {
             body = config.getText().getBodyIfLinkThere() + "\n"+trackingUrl;

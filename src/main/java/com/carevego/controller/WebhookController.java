@@ -5,6 +5,8 @@ import com.carevego.model.Change;
 import com.carevego.model.Entry;
 import com.carevego.model.Message;
 import com.carevego.model.WebhookRequest;
+import com.carevego.service.conversation.ConversationState;
+import com.carevego.service.conversation.ConversationStateManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,11 +26,15 @@ public class WebhookController {
     private static final String VERIFY_TOKEN = "1234";
     private final WhatsAppService whatsappService;
     private final ShopifyOrderService shopifyOrderService;
+    private final ConversationStateManager conversationStateManager;
+
 
     @Autowired
-    public WebhookController(WhatsAppService whatsappService , ShopifyOrderService shopifyOrderService) {
+    public WebhookController(WhatsAppService whatsappService , ShopifyOrderService shopifyOrderService,ConversationStateManager conversationStateManager) {
         this.whatsappService = whatsappService;
         this.shopifyOrderService = shopifyOrderService;
+        this.conversationStateManager = conversationStateManager;
+
 
     }
 
@@ -71,6 +77,13 @@ public class WebhookController {
                         String senderId = message.getFrom();
                         String messageType = message.getType();
 
+                        // Retrieve conversation state
+                        ConversationState state = conversationStateManager.getState(senderId);
+                        if (state.isStopMessages()) {
+                            System.out.println("Stopped messages for user: " + senderId);
+                            return;
+                        }
+
                         // Handle different message types
                         if ("text".equals(messageType) && message.getText() != null) {
                             String messageText = message.getText().getBody();
@@ -108,10 +121,15 @@ public class WebhookController {
         System.out.println("Message text: " + messageText);
         // Determine scenario and dynamic parameters
         String scenario = determineScenario(messageText);  // Implement your own logic here
-        Map<String, Object> dynamicParams = new HashMap<>();
-        dynamicParams.put("name", "User");  // Example dynamic parameter
-        // Send template message based on the scenario
-        whatsappService.sendTemplateMessage(senderId, scenario, dynamicParams);
+        if ("stop".equals(scenario) || "escalate".equals(scenario) || "manual".equals(scenario)) {
+            conversationStateManager.getState(senderId).setStopMessages(true);
+            whatsappService.sendTextMessage(senderId, false, "Your request has been escalated. A human representative will assist you shortly.");
+        } else {
+            Map<String, Object> dynamicParams = new HashMap<>();
+            dynamicParams.put("name", "User");  // Example dynamic parameter
+            // Send template message based on the scenario
+            whatsappService.sendTemplateMessage(senderId, scenario, dynamicParams);
+        }
     }
 
     private void processButtonMessage(String senderId, String buttonPayload, String buttonText) {
@@ -126,28 +144,39 @@ public class WebhookController {
         dynamicParams.put("button_response", buttonText);
         String scenario = determineScenario(buttonPayload);  // Implement your own logic here
 
-        if(scenario.contains("cta_url")){
-            whatsappService.sendInteractiveMessage(senderId, scenario, dynamicParams);
-        }else if (scenario.contains("checkdelivery")) {
-            whatsappService.sendFlowMessage(senderId, scenario, dynamicParams);
-        }else{
-            whatsappService.sendTemplateMessage(senderId, scenario, dynamicParams);
+        if ("stop".equals(scenario) || "escalate".equals(scenario) || "manual".equals(scenario)) {
+            conversationStateManager.getState(senderId).setStopMessages(true);
+            whatsappService.sendTextMessage(senderId, false, "Your request has been escalated. A human representative will assist you shortly.");
+        } else {
+
+            if (scenario.contains("cta_url")) {
+                whatsappService.sendInteractiveMessage(senderId, scenario, dynamicParams);
+            } else if (scenario.contains("checkdelivery")) {
+                whatsappService.sendFlowMessage(senderId, scenario, dynamicParams);
+            } else {
+                whatsappService.sendTemplateMessage(senderId, scenario, dynamicParams);
+            }
         }
     }
 
-    private String determineScenario(String messageText) {
-        if (messageText.contains("Hey there")) {
+    private String determineScenario(String anyMessageText) {
+        String messageText = anyMessageText.toLowerCase();
+
+        if (messageText.contains("hey")) {
             return "welcome";
-        } else if (messageText.contains("Product Enquiry")) {
+        } else if (messageText.contains("product enquiry")) {
             return "choosecategory";
-        } else if (messageText.contains("Delivery")) {
+        } else if (messageText.contains("delivery")) {
             return "checkdelivery";
         }
-        else if (messageText.contains("Insulin cooler case")) {
+        else if (messageText.contains("insulin cooler case")) {
             return "cta_url";
         }
+        else if (messageText.contains("stop") || messageText.contains("escalate") || messageText.contains("manual")) {
+            return "stop";
+        }
         else {
-            return "other";
+            return "stop";
         }
     }
 
