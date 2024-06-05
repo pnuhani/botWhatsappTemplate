@@ -5,6 +5,7 @@ import com.carevego.model.Change;
 import com.carevego.model.Entry;
 import com.carevego.model.Message;
 import com.carevego.model.WebhookRequest;
+import com.carevego.service.ChatGPTService;
 import com.carevego.service.conversation.ConversationState;
 import com.carevego.service.conversation.ConversationStateManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,13 +28,17 @@ public class WebhookController {
     private final WhatsAppService whatsappService;
     private final ShopifyOrderService shopifyOrderService;
     private final ConversationStateManager conversationStateManager;
+    private final ChatGPTService chatGPTService;
+
 
 
     @Autowired
-    public WebhookController(WhatsAppService whatsappService , ShopifyOrderService shopifyOrderService,ConversationStateManager conversationStateManager) {
+    public WebhookController(WhatsAppService whatsappService , ShopifyOrderService shopifyOrderService,ConversationStateManager conversationStateManager, ChatGPTService chatGPTService) {
         this.whatsappService = whatsappService;
         this.shopifyOrderService = shopifyOrderService;
         this.conversationStateManager = conversationStateManager;
+        this.chatGPTService = chatGPTService;
+
 
 
     }
@@ -87,6 +92,8 @@ public class WebhookController {
                         // Handle different message types
                         if ("text".equals(messageType) && message.getText() != null) {
                             String messageText = message.getText().getBody();
+                            String chatGPTResponse = chatGPTService.getChatGPTResponse(messageText);
+                            System.out.println("Chat GPTTTTT + "+chatGPTResponse);
                             processTemplateMessage(senderId, messageText);
                         } else if ("button".equals(messageType) && message.getButton() != null) {
                             String buttonPayload = message.getButton().getPayload();
