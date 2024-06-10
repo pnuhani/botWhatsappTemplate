@@ -13,15 +13,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 @Service
 public class ChatGPTService {
-
     @Autowired
     private RestTemplate restTemplate;
-
 
     @Value("${openai.api.key}")
     private String apiKey;
 
-    private final String apiUrl = "https://api.openai.com/v1/completions"; // Replace with your fine-tuned model ID if needed
+    // Update this URL with your fine-tuned model's ID
+    private final String apiUrl = "https://api.openai.com/v1/models/9XIExDdB/completions";
 
     public String getChatGPTResponse(String userMessage)  {
 
@@ -29,7 +28,7 @@ public class ChatGPTService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + apiKey);
 
-        ChatGPTRequest request = new ChatGPTRequest(userMessage,150);
+        ChatGPTRequest request = new ChatGPTRequest(userMessage, 150);
 
         HttpEntity<ChatGPTRequest> requestEntity = new HttpEntity<>(request, headers);
 
