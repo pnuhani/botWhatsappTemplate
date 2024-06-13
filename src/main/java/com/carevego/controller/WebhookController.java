@@ -5,6 +5,7 @@ import com.carevego.model.Change;
 import com.carevego.model.Entry;
 import com.carevego.model.Message;
 import com.carevego.model.WebhookRequest;
+import com.carevego.service.ChatGPTService;
 import com.carevego.service.conversation.ConversationState;
 import com.carevego.service.conversation.ConversationStateManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping()
@@ -27,13 +29,15 @@ public class WebhookController {
     private final WhatsAppService whatsappService;
     private final ShopifyOrderService shopifyOrderService;
     private final ConversationStateManager conversationStateManager;
+    private final ChatGPTService chatGPTService;
 
 
     @Autowired
-    public WebhookController(WhatsAppService whatsappService , ShopifyOrderService shopifyOrderService,ConversationStateManager conversationStateManager) {
+    public WebhookController(WhatsAppService whatsappService, ShopifyOrderService shopifyOrderService, ConversationStateManager conversationStateManager, ChatGPTService chatGPTService) {
         this.whatsappService = whatsappService;
         this.shopifyOrderService = shopifyOrderService;
         this.conversationStateManager = conversationStateManager;
+        this.chatGPTService = chatGPTService;
 
 
     }
@@ -56,7 +60,7 @@ public class WebhookController {
     public ResponseEntity<?> getData() {
 
         return ResponseEntity.ok("hello");
-        }
+    }
 
     // Endpoint to receive messages
     @PostMapping
@@ -87,6 +91,19 @@ public class WebhookController {
                         // Handle different message types
                         if ("text".equals(messageType) && message.getText() != null) {
                             String messageText = message.getText().getBody();
+                            String chatGptResponse;
+                            CompletableFuture<String> chatGPTResponseFuture = chatGPTService.getChatGPTResponse(messageText);
+                            chatGPTResponseFuture.thenAccept(response -> {
+
+                                // Process the response here
+                                System.out.println("ChatGPT Response: " + response);
+
+                            }).exceptionally(ex -> {
+                                // Handle any exceptions that might occur
+                                ex.printStackTrace();
+                                return null;
+
+                            });
                             processTemplateMessage(senderId, messageText);
                         } else if ("button".equals(messageType) && message.getButton() != null) {
                             String buttonPayload = message.getButton().getPayload();
@@ -96,10 +113,10 @@ public class WebhookController {
                         else if ("interactive".equals(messageType) && message.getInteractive().getType().equals("nfm_reply")) {
                             String orderId = message.getInteractive().getNfmReply().getPropertyFromResponseJson("orderId").toString();
                             Optional<String> trackingUrl;
-                            if(null != orderId){
-                                 trackingUrl = shopifyOrderService.getTrackingUrl(orderId);
+                            if (null != orderId) {
+                                trackingUrl = shopifyOrderService.getTrackingUrl(orderId);
                                 trackingUrl.ifPresentOrElse(
-                                        url -> whatsappService.sendTextMessage(senderId, true , String.valueOf(trackingUrl)),
+                                        url -> whatsappService.sendTextMessage(senderId, true, String.valueOf(trackingUrl)),
                                         () -> whatsappService.sendTextMessage(senderId, false, "")
                                 );
                             } else {
@@ -116,6 +133,7 @@ public class WebhookController {
         }
         //end
     }
+
     private void processTemplateMessage(String senderId, String messageText) {
         System.out.println("Text message from: " + senderId);
         System.out.println("Message text: " + messageText);
@@ -140,7 +158,7 @@ public class WebhookController {
         // Handle button message
         // Example: Respond with a confirmation template
         Map<String, Object> dynamicParams = new HashMap<>();
-        Map<String,String> urlLink = new HashMap<>();
+        Map<String, String> urlLink = new HashMap<>();
         dynamicParams.put("button_response", buttonText);
         String scenario = determineScenario(buttonPayload);  // Implement your own logic here
 
@@ -168,14 +186,11 @@ public class WebhookController {
             return "choosecategory";
         } else if (messageText.contains("delivery")) {
             return "checkdelivery";
-        }
-        else if (messageText.contains("insulin cooler case")) {
+        } else if (messageText.contains("insulin cooler case")) {
             return "cta_url";
-        }
-        else if (messageText.contains("stop") || messageText.contains("escalate") || messageText.contains("manual")) {
+        } else if (messageText.contains("stop") || messageText.contains("escalate") || messageText.contains("manual")) {
             return "stop";
-        }
-        else {
+        } else {
             return "stop";
         }
     }
